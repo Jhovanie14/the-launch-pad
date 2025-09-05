@@ -2,8 +2,6 @@ import Customers from "@/components/customers";
 import { Footer } from "@/components/footer";
 import { Hero } from "@/components/hero";
 import Navbar from "@/components/navbar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,

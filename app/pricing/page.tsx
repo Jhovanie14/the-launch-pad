@@ -18,12 +18,29 @@ import { createClient } from "@/utils/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
 
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  provider?: string;
+}
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  description?: string;
+  monthly_price: number;
+  yearly_price: number;
+  features: string[];
+}
+
 export default function Pricing() {
   const [pricing, setPricing] = useState<"monthly" | "yearly">("monthly");
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
-  const [pricingPlans, setPricingPlans] = useState<any[]>([]);
+  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
