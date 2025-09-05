@@ -47,6 +47,7 @@ const cardContent = [
 const serviceContent = [{}, {}, {}];
 
 export default function Home() {
+  
   console.log('Home page is rendering');
   return (
     <div className="min-h-screen bg-gray-50">

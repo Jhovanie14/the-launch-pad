@@ -9,6 +9,8 @@ import {
   User,
   Users,
   X,
+  Crown,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -24,6 +26,9 @@ import {
 } from "./ui/navigation-menu";
 import { Card, CardContent } from "./ui/card";
 import { useBooking } from "../context/bookingcontext";
+import { createClient } from "@/utils/supabase/client";
+import { User as SupabaseUser } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
 const services: {
   title: string;
@@ -108,7 +113,10 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAboutDropdownOpen, setIsAboutDropdownOpen] = useState(false);
-  
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -117,6 +125,31 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    getUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <nav
@@ -145,117 +178,134 @@ export default function Navbar() {
       {/* Main navigation */}
       <div className="w-full px-4 py-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            {/* Logo + Title */}
-            <div className="flex items-center space-x-3">
-              <Link href="/">
-                <Image
-                  src="/thelaunchpad.png"
-                  alt="The Launch Pad"
-                  width={48}
-                  height={48}
-                  className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
-                />
-              </Link>
-              <div className="hidden md:flex flex-col">
-                <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-                  THE LAUNCH PAD
-                </span>
-                <span className="text-xs text-blue-600 font-medium uppercase tracking-wider">
-                  Premium Car Care
-                </span>
+          {user ? (
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <p className="text-gray-600">Welcome back, {user.email}</p>
               </div>
+              <button
+                onClick={handleSignOut}
+                disabled={loading}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
+              >
+                {loading ? "Signing out..." : "Sign Out"}
+              </button>
             </div>
-
-            {/* Navigation Links */}
-            <div className="hidden lg:flex items-center space-x-8">
-              <Link
-                href="/"
-                className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
-              >
-                Home
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
+          ) : (
+            <div className="flex items-center justify-between p-6">
+              {/* Logo + Title */}
+              <Link href="/">
+                <div className="flex items-center space-x-3">
+                  <Image
+                    src="/thelaunchpad.png"
+                    alt="The Launch Pad"
+                    width={48}
+                    height={48}
+                    className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+                  />
+                  <div className="hidden md:flex flex-col">
+                    <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+                      THE LAUNCH PAD
+                    </span>
+                    <span className="text-xs text-blue-600 font-medium uppercase tracking-wider">
+                      Premium Car Care
+                    </span>
+                  </div>
+                </div>
               </Link>
-              <NavigationMenu>
-                <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger className="text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 uppercase tracking-wide bg-transparent">
-                      About Launch Pad
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent className="">
-                      <ul className="grid w-[500px] gap-2 md:w-[600px] md:grid-cols-2 lg:w-[700px]">
-                        {services.map((service) => (
-                          <ListItem
-                            icon={service.icon}
-                            key={service.title}
-                            title={service.title}
-                            href={service.href}
-                          >
-                            {service.description}
-                          </ListItem>
-                        ))}
-                      </ul>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-              <Link
-                href="/products"
-                className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
-              >
-                Products
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
-              </Link>
-              <Link
-                href="/pricing"
-                className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
-              >
-                Subscription
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
-              </Link>
-            </div>
 
-            {/* Right Side Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 rounded-md transition-all duration-200 shadow-md hover:shadow-lg uppercase tracking-wide"
-                onClick={openBookingModal}
-              >
-                Book Online
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="hover:text-blue-800 font-semibold transition-all duration-200 uppercase tracking-wide"
-              >
-                <User className="w-4 h-4" />
-                <span className="hidden md:inline">Login</span>
-              </Button>
-              {/* Mobile Menu Button */}
-
-              <Button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                size="sm"
-                variant="outline"
-                className="flex items-center md:hidden hover:text-blue-800 font-semibold transition-all duration-200 uppercase tracking-wide"
-              >
-                {isMobileMenuOpen ? (
-                  <X className="w-4 h-4" />
-                ) : (
-                  <Menu className="w-4 h-4" />
-                )}
-              </Button>
-
-              {/* Full screen mobile menu overlay */}
-              {isMobileMenuOpen && (
-                <div
-                  className={`fixed inset-0 top-16 w-full z-50 bg-white md:hidden transition-transform duration-5000 ease-in-out ${
-                    isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-                  }`}
+              {/* Navigation Links */}
+              <div className="hidden lg:flex items-center space-x-8">
+                <Link
+                  href="/"
+                  className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
                 >
-                  {/* <div className="flex justify-between items-center p-4 border-b">
+                  Home
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+                <NavigationMenu>
+                  <NavigationMenuList>
+                    <NavigationMenuItem>
+                      <NavigationMenuTrigger className="text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 uppercase tracking-wide bg-transparent">
+                        About Launch Pad
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent className="">
+                        <ul className="grid w-[500px] gap-2 md:w-[600px] md:grid-cols-2 lg:w-[700px]">
+                          {services.map((service) => (
+                            <ListItem
+                              icon={service.icon}
+                              key={service.title}
+                              title={service.title}
+                              href={service.href}
+                            >
+                              {service.description}
+                            </ListItem>
+                          ))}
+                        </ul>
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  </NavigationMenuList>
+                </NavigationMenu>
+                <Link
+                  href="/products"
+                  className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
+                >
+                  Products
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="relative inline-block text-base font-semibold text-foreground hover:text-blue-800 transition-colors duration-200 group uppercase tracking-wide"
+                >
+                  Subscription
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-800 transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+              </div>
+
+              {/* Right Side Actions */}
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 rounded-md transition-all duration-200 shadow-md hover:shadow-lg uppercase tracking-wide"
+                  onClick={openBookingModal}
+                >
+                  Book Online
+                </Button>
+                <Link href="/login">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="hover:text-blue-800 font-semibold transition-all duration-200 uppercase tracking-wide"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="hidden md:inline">Login</span>
+                  </Button>
+                </Link>
+                {/* Mobile Menu Button */}
+
+                <Button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  size="sm"
+                  variant="outline"
+                  className="flex items-center md:hidden hover:text-blue-800 font-semibold transition-all duration-200 uppercase tracking-wide"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="w-4 h-4" />
+                  ) : (
+                    <Menu className="w-4 h-4" />
+                  )}
+                </Button>
+
+                {/* Full screen mobile menu overlay */}
+                {isMobileMenuOpen && (
+                  <div
+                    className={`fixed inset-0 top-16 w-full z-50 bg-white md:hidden transition-transform duration-5000 ease-in-out ${
+                      isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+                    }`}
+                  >
+                    {/* <div className="flex justify-between items-center p-4 border-b">
                     <h1 className="text-xl font-semibold">Menu</h1>
                     <Button
                       variant="ghost"
@@ -265,83 +315,87 @@ export default function Navbar() {
                       <X className="w-6 h-6" />
                     </Button>
                   </div> */}
-                  {/* Menu Items */}
-                  <div className="flex flex-col p-4 space-y-4">
-                    <Link
-                      href="/"
-                      className="flex items-center space-x-2 py-2 border-b"
-                    >
-                      <User className="w-4 h-4" />
-                      <span className="">Login</span>
-                    </Link>
-
-                    <Link href="/" className="flex items-center space-x-2 py-2">
-                      <User />
-                      <span>Home</span>
-                    </Link>
-                    <Link
-                      href="/products"
-                      className="flex items-center space-x-2 py-2"
-                    >
-                      <User />
-                      <span>Products</span>
-                    </Link>
-                    <Link
-                      href="/pricing"
-                      className="flex items-center space-x-2 py-2"
-                    >
-                      <User />
-                      <span>Subscription</span>
-                    </Link>
-                    <div className="border-b">
-                      <div
-                        className="flex items-center justify-between space-x-2 py-2 cursor-pointer"
-                        onClick={() =>
-                          setIsAboutDropdownOpen(!isAboutDropdownOpen)
-                        }
+                    {/* Menu Items */}
+                    <div className="flex flex-col p-4 space-y-4">
+                      <Link
+                        href="/"
+                        className="flex items-center space-x-2 py-2 border-b"
                       >
-                        <span>About Launch Pad</span>
-                        <ChevronDown
-                          className={`w-4 h-4 transition-transform duration-300 ${
-                            isAboutDropdownOpen ? "rotate-180" : ""
-                          }`}
-                        />
-                      </div>
-                      {/* Dropdown Menu */}
-                      {isAboutDropdownOpen && (
-                        <div className="ml-4 mt-2">
-                          <Link
-                            href="/blog"
-                            className="block py-2 text-sm text-gray-600 hover:text-blue-800"
-                          >
-                            Blog
-                          </Link>
-                          <Link
-                            href="/contact"
-                            className="block py-2 text-sm text-gray-600 hover:text-blue-800"
-                          >
-                            Contact
-                          </Link>
-                          <Link
-                            href="/about"
-                            className="block py-2 text-sm text-gray-600 hover:text-blue-800"
-                          >
-                            About Us
-                          </Link>
-                          <Link
-                            href="/faq"
-                            className="block py-2 text-sm text-gray-600 hover:text-blue-800"
-                          >
-                            FAQ
-                          </Link>
+                        <User className="w-4 h-4" />
+                        <span className="">Login</span>
+                      </Link>
+
+                      <Link
+                        href="/"
+                        className="flex items-center space-x-2 py-2"
+                      >
+                        <User />
+                        <span>Home</span>
+                      </Link>
+                      <Link
+                        href="/products"
+                        className="flex items-center space-x-2 py-2"
+                      >
+                        <User />
+                        <span>Products</span>
+                      </Link>
+                      <Link
+                        href="/pricing"
+                        className="flex items-center space-x-2 py-2"
+                      >
+                        <User />
+                        <span>Subscription</span>
+                      </Link>
+                      <div className="border-b">
+                        <div
+                          className="flex items-center justify-between space-x-2 py-2 cursor-pointer"
+                          onClick={() =>
+                            setIsAboutDropdownOpen(!isAboutDropdownOpen)
+                          }
+                        >
+                          <span>About Launch Pad</span>
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-300 ${
+                              isAboutDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
                         </div>
-                      )}
+                        {/* Dropdown Menu */}
+                        {isAboutDropdownOpen && (
+                          <div className="ml-4 mt-2">
+                            <Link
+                              href="/blog"
+                              className="block py-2 text-sm text-gray-600 hover:text-blue-800"
+                            >
+                              Blog
+                            </Link>
+                            <Link
+                              href="/contact"
+                              className="block py-2 text-sm text-gray-600 hover:text-blue-800"
+                            >
+                              Contact
+                            </Link>
+                            <Link
+                              href="/about"
+                              className="block py-2 text-sm text-gray-600 hover:text-blue-800"
+                            >
+                              About Us
+                            </Link>
+                            <Link
+                              href="/faq"
+                              className="block py-2 text-sm text-gray-600 hover:text-blue-800"
+                            >
+                              FAQ
+                            </Link>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
       {/* Mobile menu button (hidden on desktop) */}

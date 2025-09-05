@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useBooking } from "../context/bookingcontext";
 import { Button } from "./ui/button";
-import { Car, carsData } from "../lib/supabase/model";
+import { Car, carsData } from "@/utils/supabase/model";
 import { X } from "lucide-react";
 
 export default function BookingModal() {
