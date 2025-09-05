@@ -62,13 +62,21 @@ export default function Pricing() {
         setUserProfile(profile);
 
         // Fetch current subscription
-        const { data: subscription } = await supabase.rpc(
-          "get_user_subscription",
-          { user_uuid: user.id }
-        );
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select(`
+            *,
+            subscription_plans (
+              name,
+              description
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
 
-        if (subscription && subscription.length > 0) {
-          setCurrentSubscription(subscription[0]);
+        if (subscription) {
+          setCurrentSubscription(subscription);
         }
       }
 
@@ -118,7 +126,7 @@ export default function Pricing() {
 
     if (!currentSubscription) return "Select";
 
-    if (currentSubscription.plan_name === plan.name) {
+    if (currentSubscription.subscription_plans?.name === plan.name) {
       return "Current Plan";
     }
 
@@ -128,11 +136,48 @@ export default function Pricing() {
   const getButtonVariant = (plan: any) => {
     if (!user) return "default";
 
-    if (currentSubscription?.plan_name === plan.name) {
+    if (currentSubscription?.subscription_plans?.name === plan.name) {
       return "secondary";
     }
 
     return "default";
+  };
+
+  // Handle checkout
+  const handleCheckout = async (planId: string) => {
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          planId, 
+          billingCycle: pricing 
+        }),
+      });
+
+      const { url } = await response.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+    }
+  };
+
+  // Handle customer portal
+  const handleManageSubscription = async () => {
+    try {
+      const response = await fetch('/api/create-customer-portal', {
+        method: 'POST',
+      });
+
+      const { url } = await response.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error('Error creating customer portal session:', error);
+    }
   };
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,7 +212,10 @@ export default function Pricing() {
                         Dashboard
                       </Button>
                     </Link>
-                    <Button className="bg-blue-900 flex items-center gap-2">
+                    <Button 
+                      className="bg-blue-900 flex items-center gap-2"
+                      onClick={handleManageSubscription}
+                    >
                       <Settings className="w-4 h-4" />
                       Manage Subscription
                     </Button>
@@ -240,11 +288,20 @@ export default function Pricing() {
                   <div className=" flex-1"></div>
                   <div className="p-4 border-t grid gap-2">
                     {user ? (
-                      <Button size="sm" className="bg-blue-900">
-                        {index === 0 ? "Current Plan" : "Upgrade"}
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-900"
+                        onClick={() => handleCheckout(plan.id)}
+                        disabled={currentSubscription?.subscription_plans?.name === plan.name}
+                      >
+                        {getButtonText(plan, index)}
                       </Button>
                     ) : (
-                      <Button size="sm" className="bg-blue-900">
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-900"
+                        onClick={() => handleCheckout(plan.id)}
+                      >
                         Select
                       </Button>
                     )}
